@@ -39,23 +39,12 @@ impl Miner {
                 }
             }
         };
-        let amountf = (amount as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
+        //let amountf = (amount as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
         let ix = ore::instruction::claim(pubkey, beneficiary, amount);
         println!("Submitting claim transaction...");
-        match self
-            .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false)
-            .await
-        {
-            Ok(sig) => {
-                println!("Claimed {:} ORE to account {:}", amountf, beneficiary);
-                println!("{:?}", sig);
-            }
-            Err(err) => {
-                println!("Error: {:?}", err);
-            }
-        }
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], true);
     }
 
     async fn initialize_ata(&self) -> Pubkey {

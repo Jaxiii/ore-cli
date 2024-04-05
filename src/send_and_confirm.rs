@@ -18,9 +18,9 @@ use solana_transaction_status::{TransactionConfirmationStatus, UiTransactionEnco
 
 use crate::Miner;
 
-const RPC_RETRIES: usize = 1;
-const GATEWAY_RETRIES: usize = 4;
-const CONFIRM_RETRIES: usize = 4;
+const RPC_RETRIES: usize = 0;
+const GATEWAY_RETRIES: usize = 1;
+const CONFIRM_RETRIES: usize = 0;
 
 impl Miner {
     pub async fn send_and_confirm(
@@ -33,19 +33,7 @@ impl Miner {
         let client =
             RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
 
-        // Return error if balance is zero
-        let balance = client
-            .get_balance_with_commitment(&signer.pubkey(), CommitmentConfig::confirmed())
-            .await
-            .unwrap();
-        if balance.value <= 0 {
-            return Err(ClientError {
-                request: None,
-                kind: ClientErrorKind::Custom("Insufficient SOL balance".into()),
-            });
-        }
-
-        // Build tx
+        // Build tx - TODO move to its own thread
         let (mut hash, mut slot) = client
             .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
             .await
@@ -54,7 +42,7 @@ impl Miner {
             skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(UiTransactionEncoding::Base64),
-            max_retries: Some(RPC_RETRIES),
+            max_retries: None,
             min_context_slot: Some(slot),
         };
         let mut tx = Transaction::new_with_payer(ixs, Some(&signer.pubkey()));
@@ -135,7 +123,7 @@ impl Miner {
             if attempts > GATEWAY_RETRIES {
                 return Err(ClientError {
                     request: None,
-                    kind: ClientErrorKind::Custom("Max retries".into()),
+                    kind: ClientErrorKind::Custom("GATEWAY_RETRIES Max retries".into()),
                 });
             }
         }

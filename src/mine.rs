@@ -86,18 +86,7 @@ impl Miner {
                     next_hash.into(),
                     nonce,
                 );
-                match self
-                    .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], false)
-                    .await
-                {
-                    Ok(sig) => {
-                        println!("Success: {}", sig);
-                        break;
-                    }
-                    Err(_err) => {
-                        // TODO
-                    }
-                }
+                self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], true);
             }
         }
     }
