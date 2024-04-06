@@ -12,7 +12,7 @@ impl Miner {
         let signer = self.signer();
         let proof_address = proof_pubkey(signer.pubkey());
         let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::processed());
         if client.get_account(&proof_address).await.is_ok() {
             return;
         }

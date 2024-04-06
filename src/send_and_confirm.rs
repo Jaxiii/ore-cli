@@ -20,7 +20,7 @@ use crate::Miner;
 
 const RPC_RETRIES: usize = 0;
 const GATEWAY_RETRIES: usize = 1;
-const CONFIRM_RETRIES: usize = 0;
+const CONFIRM_RETRIES: usize = 8;
 
 impl Miner {
     pub async fn send_and_confirm(
@@ -31,7 +31,7 @@ impl Miner {
         let mut stdout = stdout();
         let signer = self.signer();
         let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::processed());
 
         // Build tx - TODO move to its own thread
         let (mut hash, mut slot) = client
@@ -40,7 +40,7 @@ impl Miner {
             .unwrap();
         let mut send_cfg = RpcSendTransactionConfig {
             skip_preflight: true,
-            preflight_commitment: Some(CommitmentLevel::Confirmed),
+            preflight_commitment: Some(CommitmentLevel::Processed),
             encoding: Some(UiTransactionEncoding::Base64),
             max_retries: None,
             min_context_slot: Some(slot),
@@ -75,8 +75,8 @@ impl Miner {
                                                 .as_ref()
                                                 .unwrap();
                                             match current_commitment {
-                                                TransactionConfirmationStatus::Processed => {}
-                                                TransactionConfirmationStatus::Confirmed
+                                                TransactionConfirmationStatus::Processed
+                                                | TransactionConfirmationStatus::Confirmed
                                                 | TransactionConfirmationStatus::Finalized => {
                                                     println!("Transaction landed!");
                                                     return Ok(sig);
@@ -113,9 +113,9 @@ impl Miner {
                 .unwrap();
             send_cfg = RpcSendTransactionConfig {
                 skip_preflight: true,
-                preflight_commitment: Some(CommitmentLevel::Confirmed),
+                preflight_commitment: Some(CommitmentLevel::Processed),
                 encoding: Some(UiTransactionEncoding::Base64),
-                max_retries: Some(RPC_RETRIES),
+                max_retries: None,
                 min_context_slot: Some(slot),
             };
             tx.sign(&[&signer], hash);

@@ -20,7 +20,7 @@ impl Miner {
             signer.pubkey()
         };
         let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::processed());
         let token_account_address = spl_associated_token_account::get_associated_token_address(
             &address,
             &ore::MINT_ADDRESS,
