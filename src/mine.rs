@@ -1,17 +1,19 @@
 use std::{
-    io::{stdout, Write},
-    sync::{atomic::AtomicBool, Arc, Mutex},
+    io::{stdout, Write}, str::FromStr, sync::{atomic::AtomicBool, Arc, Mutex}
 };
 
 use ore::{self, state::Bus, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
 use rand::Rng;
 use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_program::pubkey;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     compute_budget::ComputeBudgetInstruction,
     keccak::{hashv, Hash as KeccakHash},
     signature::Signer,
+    system_instruction::transfer,
 };
+
 
 use crate::{
     cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET},
@@ -67,7 +69,7 @@ impl Miner {
                         let cu_price_ix =
                             ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
                         let reset_ix = ore::instruction::reset(signer.pubkey());
-                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], true)
+                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], false,)
                             .await
                             .ok();
                     }
@@ -79,7 +81,13 @@ impl Miner {
                 println!("Sending on bus {} ({} ORE)", bus.id, bus_rewards);
                 let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
                 let cu_price_ix =
-                    ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
+                ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
+                let jito_tips = transfer(
+                        &signer.pubkey(),
+                        &pubkey::Pubkey::from_str("DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh")
+                            .unwrap(),
+                    169420,
+                );
                 let ix_mine = ore::instruction::mine(
                     signer.pubkey(),
                     BUS_ADDRESSES[bus.id as usize],
@@ -87,7 +95,7 @@ impl Miner {
                     nonce,
                 );
                 match self
-                    .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], false)
+                    .send_and_confirm(&[jito_tips, cu_limit_ix, cu_price_ix, ix_mine], false,)
                     .await
                 {
                     Ok(sig) => {
@@ -95,7 +103,7 @@ impl Miner {
                         break;
                     }
                     Err(_err) => {
-                        // TODO
+                        println!("Error: {}", _err.to_string());
                     }
                 }
             }

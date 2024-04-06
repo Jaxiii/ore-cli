@@ -50,8 +50,8 @@ impl Miner {
             .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
             .await
             .unwrap();
-        let mut send_cfg = RpcSendTransactionConfig {
-            skip_preflight: true,
+        let send_cfg = RpcSendTransactionConfig {
+            skip_preflight: false,
             preflight_commitment: Some(CommitmentLevel::Confirmed),
             encoding: Some(UiTransactionEncoding::Base64),
             max_retries: Some(RPC_RETRIES),
@@ -118,18 +118,11 @@ impl Miner {
             stdout.flush().ok();
 
             // Retry
-            std::thread::sleep(Duration::from_millis(200));
+            std::thread::sleep(Duration::from_millis(500));
             (hash, slot) = client
                 .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
                 .await
                 .unwrap();
-            send_cfg = RpcSendTransactionConfig {
-                skip_preflight: true,
-                preflight_commitment: Some(CommitmentLevel::Confirmed),
-                encoding: Some(UiTransactionEncoding::Base64),
-                max_retries: Some(RPC_RETRIES),
-                min_context_slot: Some(slot),
-            };
             tx.sign(&[&signer], hash);
             attempts += 1;
             if attempts > GATEWAY_RETRIES {
