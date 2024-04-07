@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set default values
-DEFAULT_RPC_URL="RPC_URL_HERE"
-DEFAULT_KEY="~/.config/solana/id.json"
+DEFAULT_RPC_URL="RPC"
+DEFAULT_KEY="~/.config/solana/id2.json"
 DEFAULT_FEE=950000
 DEFAULT_THREADS=4
 
