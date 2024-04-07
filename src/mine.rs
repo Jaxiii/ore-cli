@@ -84,7 +84,7 @@ impl Miner {
                 ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
                 let jito_tips = transfer(
                         &signer.pubkey(),
-                        &pubkey::Pubkey::from_str("DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL")
+                        &pubkey::Pubkey::from_str("DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh")
                             .unwrap(),
                     601000,
                 );
