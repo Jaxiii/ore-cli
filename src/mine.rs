@@ -1,22 +1,25 @@
 use std::{
     io::{stdout, Write},
-    sync::{atomic::AtomicBool, Arc, Mutex},
+    sync::{Arc, atomic::AtomicBool, Mutex},
+    str::FromStr,
 };
 
 use ore::{self, state::Bus, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
 use rand::Rng;
 use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_program::pubkey;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     compute_budget::ComputeBudgetInstruction,
     keccak::{hashv, Hash as KeccakHash},
     signature::Signer,
+    system_instruction::transfer,
 };
 
 use crate::{
     cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET},
-    utils::{get_clock_account, get_proof, get_treasury},
     Miner,
+    utils::{get_clock_account, get_proof, get_treasury},
 };
 
 // Odds of being selected to submit a reset tx
@@ -30,9 +33,24 @@ impl Miner {
         let mut stdout = stdout();
         let mut rng = rand::thread_rng();
 
-        println!("Starting to Mine");
+
+        stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
+
+
+        let jito_addresses = vec![
+            "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+            "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
+            "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
+            "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
+            "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh",
+            "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
+            "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
+            "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
+        ];
+
+        println!("{}: Starting to Mine", signer.pubkey());
         // Start mining loop
-        loop {
+        'mining_loop:loop {
             // Fetch account state
             let balance = self.get_ore_display_balance().await;
             let treasury = get_treasury(self.cluster.clone()).await;
@@ -41,19 +59,24 @@ impl Miner {
                 (proof.claimable_rewards as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
             let reward_rate =
                 (treasury.reward_rate as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
-            stdout.write_all(b"\x1b[2J\x1b[3J\x1b[H").ok();
+            println!("Wallet: {}", signer.pubkey());
             println!("Balance: {} ORE", balance);
             println!("Claimable: {} ORE", rewards);
             println!("Reward rate: {} ORE", reward_rate);
+            println!("Fee: {}", self.priority_fee);
+            println!("Enable JitoTip: {}", self.jito_enable);
+            println!("JitoTip Fee: {}", self.jito_fee);
 
             // Escape sequence that clears the screen and the scrollback buffer
             println!("\nMining for a valid hash...");
             let (next_hash, nonce) =
                 self.find_next_hash_par(proof.hash.into(), treasury.difficulty.into(), threads);
+            println!();
 
             // Submit mine tx.
             // Use busses randomly so on each epoch, transactions don't pile on the same busses
-            println!("\n\nSubmitting hash for validation...");
+            // println!("\n\nSubmitting hash for validation...");
+
             loop {
                 // Reset epoch, if needed
                 let treasury = get_treasury(self.cluster.clone()).await;
@@ -68,28 +91,63 @@ impl Miner {
                         let cu_price_ix =
                             ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
                         let reset_ix = ore::instruction::reset(signer.pubkey());
-                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], true)
+                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], false, true)
                             .await
                             .ok();
                     }
+                    continue 'mining_loop
                 }
 
                 // Submit request.
                 let bus = self.find_bus_id(treasury.reward_rate).await;
-                let bus_rewards = (bus.rewards as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
-                println!("Sending on bus {} ({} ORE)", bus.id, bus_rewards);
+                // let bus_rewards = (bus.rewards as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
+                // println!("Sending on bus {} ({} ORE)", bus.id, bus_rewards);
                 let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
                 let cu_price_ix =
                     ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
+
+
+                // jito Tips
+                let mut rng = rand::thread_rng();
+                let random_index = rng.gen_range(0..jito_addresses.len());
+                let selected_address = jito_addresses[random_index];
+
+                let jito_tips = transfer(
+                    &signer.pubkey(), //DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt
+                    &pubkey::Pubkey::from_str(selected_address)
+                        .unwrap(),
+                    self.jito_fee,
+                );
+
                 let ix_mine = ore::instruction::mine(
                     signer.pubkey(),
                     BUS_ADDRESSES[bus.id as usize],
                     next_hash.into(),
                     nonce,
                 );
-                self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], true)
+
+
+                let mut ixs: Vec<_> = vec![cu_limit_ix, cu_price_ix, ix_mine];
+                if self.jito_enable {
+                    ixs.insert(0, jito_tips);
+                }
+
+                match self
+                    .send_and_confirm(&ixs, false, false)
                     .await
-                    .ok();
+                {
+                    Ok(sig) => {
+                        println!("Success: {}", sig);
+                        break;
+                    }
+                    Err(_err) => {
+                        println!("send_and_confirm Error: {}", _err.to_string());
+
+                        if Miner::should_break_loop(&_err.to_string()) {
+                            continue 'mining_loop;
+                        }
+                    }
+                }
             }
         }
     }
@@ -209,5 +267,8 @@ impl Miner {
             }
             Err(_) => "Err".to_string(),
         }
+    }
+    pub fn should_break_loop(err_msg: &str) -> bool {
+        err_msg.contains("custom program error: 0x3")
     }
 }

@@ -1,8 +1,11 @@
 #!/bin/bash
 
+echo "Wallet: $1"
+
 while true
 do
   echo "Running"
-   ./target/release/ore --rpc "http://167.71.140.228/v1/rpc" --keypair ./id.json --priority-fee 300000 mine --threads 8
+   ./target/release/ore --rpc $2 --jito-client $3 --keypair $1 --priority-fee 1001 --jito-enable --jito-fee 898765 mine
+   --threads 8
   echo "Exited"
 done

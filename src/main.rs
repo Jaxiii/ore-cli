@@ -24,23 +24,58 @@ struct Miner {
     pub keypair_filepath: Option<String>,
     pub priority_fee: u64,
     pub cluster: String,
+    pub jito_fee: u64,
+    pub jito_enable: bool,
+    pub jito_client: String,
 }
 
 #[derive(Parser, Debug)]
 #[command(about, version)]
 struct Args {
     #[arg(
+    long,
+    value_name = "JitoTips Fee",
+    help = "10000=0.00001SOL",
+    default_value = "10000"
+    )]
+    jito_fee: u64,
+
+    #[arg(
+    long,
+    value_name = "enable JitoTips",
+    help = "enable JitoTips?",
+    default_value = "false"
+    )]
+    jito_enable: bool,
+    #[arg(
         long,
         value_name = "NETWORK_URL",
         help = "Network address of your RPC provider",
-        default_value = "https://api.mainnet-beta.solana.com"
+        global = true
     )]
-    rpc: String,
+    rpc: Option<String>,
+    #[arg(
+        long,
+        value_name = "JITO_URL",
+        help = "Network address of your JITO RPC provider",
+        global = true
+    )]
+    jito_client: Option<String>,
+
+    #[clap(
+        global = true,
+        short = 'C',
+        long = "config",
+        id = "PATH",
+        help = "Filepath to config file."
+    )]
+    pub config_file: Option<String>,
 
     #[arg(
         long,
         value_name = "KEYPAIR_FILEPATH",
-        help = "Filepath to keypair to use"
+        help = "Filepath to keypair to use",
+        global = true
     )]
     keypair: Option<String>,
 
@@ -48,7 +83,8 @@ struct Args {
         long,
         value_name = "MICROLAMPORTS",
         help = "Number of microlamports to pay as priority fee per transaction",
-        default_value = "0"
+        default_value = "0",
+        global = true
     )]
     priority_fee: u64,
 
@@ -160,10 +196,33 @@ struct UpdateDifficultyArgs {}
 
 #[tokio::main]
 async fn main() {
-    // Initialize miner.
     let args = Args::parse();
-    let cluster = args.rpc;
-    let miner = Arc::new(Miner::new(cluster.clone(), args.priority_fee, args.keypair));
+
+    // Load the config file from custom path, the default path, or use default config values
+    let cli_config = if let Some(config_file) = &args.config_file {
+        solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
+            eprintln!("error: Could not find config file `{}`", config_file);
+            std::process::exit(1);
+        })
+    } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
+        solana_cli_config::Config::load(config_file).unwrap_or_default()
+    } else {
+        solana_cli_config::Config::default()
+    };
+
+    // Initialize miner.
+    let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url.clone());
+    let jito_client = args.jito_client.unwrap_or(cli_config.json_rpc_url.clone());
+    let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path);
+
+    let miner = Arc::new(Miner::new(
+        cluster.clone(),
+        jito_client.clone(),
+        args.priority_fee,
+        Some(default_keypair),
+        args.jito_fee,
+        args.jito_enable
+    ));
 
     // Execute user command.
     match args.command {
@@ -201,11 +260,14 @@ async fn main() {
 }
 
 impl Miner {
-    pub fn new(cluster: String, priority_fee: u64, keypair_filepath: Option<String>) -> Self {
+    pub fn new(cluster: String, jito_client: String, priority_fee: u64, keypair_filepath: Option<String>, jito_fee: u64, jito_enable: bool) -> Self {
         Self {
             keypair_filepath,
             priority_fee,
             cluster,
+            jito_client,
+            jito_fee,
+            jito_enable,
         }
     }
 

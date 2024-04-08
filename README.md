@@ -11,3 +11,9 @@ Once you have Rust installed, you can build the Ore CLI by running the following
 ```sh
 cargo build --release
 ```
+
+
+```sh
+./target/release/ore --rpc "" --jito-client "https://mainnet.block-engine.jito.wtf/api/v1/transactions" --keypair ./id.json --priority-fee 1001 --jito-enable --jito-fee 898765 
+mine --threads 8
+```
