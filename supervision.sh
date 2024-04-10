@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set default values
-DEFAULT_RPC_URL="https://mainnet.helius-rpc.com/?api-key=59c981e3-3dc1-4c64-9b5a-2c315893fdcc"
-DEFAULT_KEY="~/.config/solana/id2.json"
+DEFAULT_RPC_URL="RPC"
+DEFAULT_KEY="~/.config/solana/id.json"
 DEFAULT_FEE=9500000
 DEFAULT_THREADS=4
 
