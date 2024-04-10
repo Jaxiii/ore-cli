@@ -9,7 +9,7 @@ use crate::{
 impl Miner {
     pub async fn treasury(&self) {
         let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::processed());
         if let Ok(Some(treasury_tokens)) = client.get_token_account(&treasury_tokens_pubkey()).await
         {
             let treasury = get_treasury(self.cluster.clone()).await;

@@ -9,14 +9,14 @@ impl Miner {
         // Return early if program is initialized
         let signer = self.signer();
         let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::processed());
         if client.get_account(&TREASURY_ADDRESS).await.is_ok() {
             return;
         }
 
         // Sign and send transaction.
         let ix = ore::instruction::initialize(signer.pubkey());
-        self.send_and_confirm(&[ix], false)
+        self.send_and_confirm(&[ix], false,false)
             .await
             .expect("Transaction failed");
     }
