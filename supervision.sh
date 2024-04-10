@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set default values
-DEFAULT_RPC_URL="https://solana-mainnet.g.alchemy.com/v2/osUBSeE2IJUBlJL5MpuH-VajO2gmLYAj"
-DEFAULT_KEY="~/.config/solana/id2.json"
+DEFAULT_RPC_URL="RPC"
+DEFAULT_KEY="~/.config/solana/id.json"
 DEFAULT_FEE=950000
 DEFAULT_THREADS=4
 
