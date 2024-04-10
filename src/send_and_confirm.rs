@@ -110,7 +110,7 @@ impl Miner {
         tx.sign(&[&signer], hash);
 
 
-        let mut sigs = vec![];
+        let sigs = vec![];
         let mut attempts = 0;
         loop {
             // println!("Attempt: {:?}", attempts);
