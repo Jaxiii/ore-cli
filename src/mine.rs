@@ -18,9 +18,7 @@ use solana_sdk::{
 
 
 use crate::{
-    cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET},
-    Miner,
-    utils::{get_clock_account, get_proof, get_treasury},
+    cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET}, utils::{get_clock_account, get_proof, get_treasury, read_current_value}, Miner
 };
 
 // Odds of being selected to submit a reset tx
@@ -78,7 +76,6 @@ impl Miner {
             println!("\n\nSubmitting hash for validation...");
 
             loop {
-
                 // Reset epoch, if needed
                 let treasury = get_treasury(self.cluster.clone()).await;
                 let clock = get_clock_account(self.cluster.clone()).await;
@@ -92,7 +89,7 @@ impl Miner {
                         let cu_price_ix =
                             ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
                         let reset_ix = ore::instruction::reset(signer.pubkey());
-                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], false, true)
+                        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, reset_ix], false, true, None)
                             .await
                             .ok();
                     }
@@ -131,9 +128,14 @@ impl Miner {
                 if self.jito_enable {
                     ixs.insert(0, jito_tips);
                 }
-
+                let current_value = read_current_value().await.expect("Failed to read current value");
+                if proof.hash.to_string() != current_value {
+                    println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                    // Decide on your action here. You might want to break the loop or return early.
+                    break;
+                }
                 match self
-                    .send_and_confirm(&ixs, false, false)
+                    .send_and_confirm(&ixs, false, false, Some(proof.hash.to_string()))
                     .await
                 {
                     Ok(sig) => {

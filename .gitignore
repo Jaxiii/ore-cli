@@ -5,3 +5,4 @@ output.log
 README_LOCAL.md
 runner.go
 *.mod
+wallets/

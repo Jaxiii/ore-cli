@@ -2,17 +2,11 @@ mod balance;
 mod busses;
 mod claim;
 mod cu_limits;
-#[cfg(feature = "admin")]
-mod initialize;
 mod mine;
 mod register;
 mod rewards;
 mod send_and_confirm;
 mod treasury;
-#[cfg(feature = "admin")]
-mod update_admin;
-#[cfg(feature = "admin")]
-mod update_difficulty;
 mod utils;
 
 use std::sync::Arc;
@@ -111,18 +105,6 @@ enum Commands {
 
     #[command(about = "Fetch the treasury account and balance")]
     Treasury(TreasuryArgs),
-
-    #[cfg(feature = "admin")]
-    #[command(about = "Initialize the program")]
-    Initialize(InitializeArgs),
-
-    #[cfg(feature = "admin")]
-    #[command(about = "Update the program admin authority")]
-    UpdateAdmin(UpdateAdminArgs),
-
-    #[cfg(feature = "admin")]
-    #[command(about = "Update the mining difficulty")]
-    UpdateDifficulty(UpdateDifficultyArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -180,20 +162,6 @@ struct ClaimArgs {
     beneficiary: Option<String>,
 }
 
-#[cfg(feature = "admin")]
-#[derive(Parser, Debug)]
-struct InitializeArgs {}
-
-#[cfg(feature = "admin")]
-#[derive(Parser, Debug)]
-struct UpdateAdminArgs {
-    new_admin: String,
-}
-
-#[cfg(feature = "admin")]
-#[derive(Parser, Debug)]
-struct UpdateDifficultyArgs {}
-
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -243,18 +211,6 @@ async fn main() {
         }
         Commands::Claim(args) => {
             miner.claim(cluster, args.beneficiary, args.amount).await;
-        }
-        #[cfg(feature = "admin")]
-        Commands::Initialize(_) => {
-            miner.initialize().await;
-        }
-        #[cfg(feature = "admin")]
-        Commands::UpdateAdmin(args) => {
-            miner.update_admin(args.new_admin).await;
-        }
-        #[cfg(feature = "admin")]
-        Commands::UpdateDifficulty(_) => {
-            miner.update_difficulty().await;
         }
     }
 }
