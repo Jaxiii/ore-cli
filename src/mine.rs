@@ -1,17 +1,17 @@
 use std::{
     io::{stdout, Write},
-    sync::{Arc, atomic::AtomicBool, Mutex},
     str::FromStr,
+    sync::{Arc, atomic::AtomicBool, Mutex},
 };
 
-use ore::{self, state::Bus, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
+use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION, state::Bus};
 use rand::Rng;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_program::pubkey;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     compute_budget::ComputeBudgetInstruction,
-    keccak::{hashv, Hash as KeccakHash},
+    keccak::{Hash as KeccakHash, hashv},
     signature::Signer,
     system_instruction::transfer,
 };
@@ -50,7 +50,7 @@ impl Miner {
 
         println!("{}: Starting to Mine", signer.pubkey());
         // Start mining loop
-        'mining_loop:loop {
+        'mining_loop: loop {
             // Fetch account state
             let balance = self.get_ore_display_balance().await;
             let treasury = get_treasury(self.cluster.clone()).await;
@@ -71,13 +71,13 @@ impl Miner {
             println!("\nMining for a valid hash...");
             let (next_hash, nonce) =
                 self.find_next_hash_par(proof.hash.into(), treasury.difficulty.into(), threads);
-            println!();
 
             // Submit mine tx.
             // Use busses randomly so on each epoch, transactions don't pile on the same busses
-            // println!("\n\nSubmitting hash for validation...");
+            println!("\n\nSubmitting hash for validation...");
 
             loop {
+
                 // Reset epoch, if needed
                 let treasury = get_treasury(self.cluster.clone()).await;
                 let clock = get_clock_account(self.cluster.clone()).await;
@@ -95,7 +95,7 @@ impl Miner {
                             .await
                             .ok();
                     }
-                    continue 'mining_loop
+                    continue 'mining_loop;
                 }
 
                 // Submit request.
@@ -113,9 +113,8 @@ impl Miner {
                 let selected_address = jito_addresses[random_index];
 
                 let jito_tips = transfer(
-                    &signer.pubkey(), //DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt
-                    &pubkey::Pubkey::from_str(selected_address)
-                        .unwrap(),
+                    &signer.pubkey(),
+                    &pubkey::Pubkey::from_str(selected_address).unwrap(),
                     self.jito_fee,
                 );
 
@@ -142,8 +141,7 @@ impl Miner {
                     }
                     Err(_err) => {
                         println!("send_and_confirm Error: {}", _err.to_string());
-
-                        if Miner::should_break_loop(&_err.to_string()) {
+                        if self.jito_enable || Miner::should_break_loop(&_err.to_string()) {
                             continue 'mining_loop;
                         }
                     }
