@@ -1,6 +1,12 @@
 /target
 output.log
-.vscode
+*.json
+README_LOCAL.md
+runner.go
+*.mod
+wallets/
 Cargo.lock
+.vscode
+proof_data.txt
 /.github
 .github
