@@ -9,7 +9,8 @@ mod send_and_confirm;
 mod treasury;
 mod utils;
 
-use std::sync::Arc;
+use std::io::{self, BufRead};
+use std::{fs::File, path::Path, sync::Arc};
 
 use clap::{command, Parser, Subcommand};
 use solana_sdk::signature::{read_keypair_file, Keypair};
@@ -181,37 +182,31 @@ async fn main() {
     // Initialize miner.
     let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url.clone());
     let jito_client = args.jito_client.unwrap_or(cli_config.json_rpc_url.clone());
-    let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path);
+    let keypair_paths = read_lines("wallets.txt");
 
-    let miner = Arc::new(Miner::new(
-        cluster.clone(),
-        jito_client.clone(),
-        args.priority_fee,
-        Some(default_keypair),
-        args.jito_fee,
-        args.jito_enable
-    ));
 
-    // Execute user command.
-    match args.command {
-        Commands::Balance(args) => {
-            miner.balance(args.address).await;
-        }
-        Commands::Busses(_) => {
-            miner.busses().await;
-        }
-        Commands::Rewards(args) => {
-            miner.rewards(args.address).await;
-        }
-        Commands::Treasury(_) => {
-            miner.treasury().await;
-        }
-        Commands::Mine(args) => {
-            miner.mine(args.threads).await;
-        }
-        Commands::Claim(args) => {
-            miner.claim(cluster, args.beneficiary, args.amount).await;
-        }
+
+    let mut miner_handles = Vec::new();
+
+    if let Ok(keypair_path) = keypair_paths {
+        println!("{}",keypair_path[0].clone());
+        let miner = Miner::new(
+            cluster.clone(),
+            jito_client.clone(),
+            args.priority_fee,
+            Some(keypair_path[0].clone().to_string()),
+            args.jito_fee,
+            args.jito_enable,
+        );
+
+        // Spawn a new asynchronous task for each miner to start mining concurrently.
+        let handle = tokio::task::spawn_blocking(move || {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                miner.mine(8).await;
+            });
+        });
+        
+        miner_handles.push(handle);
     }
 }
 
@@ -233,4 +228,13 @@ impl Miner {
             None => panic!("No keypair provided"),
         }
     }
+}
+
+// Function to read lines from a file and return them as a Vec<String>.
+fn read_lines<P>(filename: P) -> io::Result<Vec<String>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    io::BufReader::new(file).lines().collect()
 }
