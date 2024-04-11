@@ -2,45 +2,37 @@ mod balance;
 mod busses;
 mod claim;
 mod cu_limits;
+#[cfg(feature = "admin")]
+mod initialize;
 mod mine;
 mod register;
 mod rewards;
 mod send_and_confirm;
 mod treasury;
+#[cfg(feature = "admin")]
+mod update_admin;
+#[cfg(feature = "admin")]
+mod update_difficulty;
 mod utils;
 
 use std::sync::Arc;
 
 use clap::{command, Parser, Subcommand};
-use solana_sdk::signature::{read_keypair_file, Keypair};
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::{
+    commitment_config::CommitmentConfig,
+    signature::{read_keypair_file, Keypair},
+};
 
 struct Miner {
     pub keypair_filepath: Option<String>,
     pub priority_fee: u64,
-    pub cluster: String,
-    pub jito_fee: u64,
-    pub jito_enable: bool,
-    pub jito_client: String,
+    pub rpc_client: Arc<RpcClient>,
 }
 
 #[derive(Parser, Debug)]
 #[command(about, version)]
 struct Args {
-    #[arg(
-    long,
-    value_name = "JitoTips Fee",
-    help = "10000=0.00001SOL",
-    default_value = "10000"
-    )]
-    jito_fee: u64,
-
-    #[arg(
-    long,
-    value_name = "enable JitoTips",
-    help = "enable JitoTips?",
-    default_value = "false"
-    )]
-    jito_enable: bool,
     #[arg(
         long,
         value_name = "NETWORK_URL",
@@ -48,13 +40,6 @@ struct Args {
         global = true
     )]
     rpc: Option<String>,
-    #[arg(
-        long,
-        value_name = "JITO_URL",
-        help = "Network address of your JITO RPC provider",
-        global = true
-    )]
-    jito_client: Option<String>,
 
     #[clap(
         global = true,
@@ -105,6 +90,18 @@ enum Commands {
 
     #[command(about = "Fetch the treasury account and balance")]
     Treasury(TreasuryArgs),
+
+    #[cfg(feature = "admin")]
+    #[command(about = "Initialize the program")]
+    Initialize(InitializeArgs),
+
+    #[cfg(feature = "admin")]
+    #[command(about = "Update the program admin authority")]
+    UpdateAdmin(UpdateAdminArgs),
+
+    #[cfg(feature = "admin")]
+    #[command(about = "Update the mining difficulty")]
+    UpdateDifficulty(UpdateDifficultyArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -162,6 +159,20 @@ struct ClaimArgs {
     beneficiary: Option<String>,
 }
 
+#[cfg(feature = "admin")]
+#[derive(Parser, Debug)]
+struct InitializeArgs {}
+
+#[cfg(feature = "admin")]
+#[derive(Parser, Debug)]
+struct UpdateAdminArgs {
+    new_admin: String,
+}
+
+#[cfg(feature = "admin")]
+#[derive(Parser, Debug)]
+struct UpdateDifficultyArgs {}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -179,17 +190,14 @@ async fn main() {
     };
 
     // Initialize miner.
-    let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url.clone());
-    let jito_client = args.jito_client.unwrap_or(cli_config.json_rpc_url.clone());
+    let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url);
     let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path);
+    let rpc_client = RpcClient::new_with_commitment(cluster, CommitmentConfig::finalized());
 
     let miner = Arc::new(Miner::new(
-        cluster.clone(),
-        jito_client.clone(),
+        Arc::new(rpc_client),
         args.priority_fee,
         Some(default_keypair),
-        args.jito_fee,
-        args.jito_enable
     ));
 
     // Execute user command.
@@ -210,20 +218,29 @@ async fn main() {
             miner.mine(args.threads).await;
         }
         Commands::Claim(args) => {
-            miner.claim(cluster, args.beneficiary, args.amount).await;
+            miner.claim(args.beneficiary, args.amount).await;
+        }
+        #[cfg(feature = "admin")]
+        Commands::Initialize(_) => {
+            miner.initialize().await;
+        }
+        #[cfg(feature = "admin")]
+        Commands::UpdateAdmin(args) => {
+            miner.update_admin(args.new_admin).await;
+        }
+        #[cfg(feature = "admin")]
+        Commands::UpdateDifficulty(_) => {
+            miner.update_difficulty().await;
         }
     }
 }
 
 impl Miner {
-    pub fn new(cluster: String, jito_client: String, priority_fee: u64, keypair_filepath: Option<String>, jito_fee: u64, jito_enable: bool) -> Self {
+    pub fn new(rpc_client: Arc<RpcClient>, priority_fee: u64, keypair_filepath: Option<String>) -> Self {
         Self {
+            rpc_client,
             keypair_filepath,
             priority_fee,
-            cluster,
-            jito_client,
-            jito_fee,
-            jito_enable,
         }
     }
 
