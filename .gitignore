@@ -1,2 +1,6 @@
 /target
 output.log
+.vscode
+Cargo.lock
+/.github
+.github
