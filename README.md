@@ -1,4 +1,7 @@
-# Without auto restart upon failure
+
+# How to
+
+## Without auto restart upon failure
 
 ```sh
 cargo build --release
@@ -9,13 +12,13 @@ cargo build --release
 mine --threads 8
 ```
 
-# Without auto restart upon failure - DEFAULT
+## With auto restart upon failure - Default
 
 ```sh
 ./supervision.sh
 ```
 
-# Without auto restart upon failure - Custom
+## Without auto restart upon failure - Custom
 
 ```sh
 ./supervision.sh <YOUR-RPC-CLIENT> <KEY_PATH> <PRIORITY-FEE> <JITO-FEE> <THREADS>
