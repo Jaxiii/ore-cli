@@ -18,7 +18,7 @@ use solana_sdk::{
 
 
 use crate::{
-    cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET}, utils::{get_clock_account, get_proof, get_treasury, read_current_value}, Miner
+    cu_limits::{CU_LIMIT_MINE, CU_LIMIT_RESET}, utils::{get_clock_account, get_proof, get_treasury, /*read_current_value*/}, Miner
 };
 
 // Odds of being selected to submit a reset tx
@@ -128,12 +128,12 @@ impl Miner {
                 if self.jito_enable {
                     ixs.insert(0, jito_tips);
                 }
-                let current_value = read_current_value().await.expect("Failed to read current value");
-                if proof.hash.to_string() != current_value {
-                    println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                    // Decide on your action here. You might want to break the loop or return early.
-                    break;
-                }
+                // let current_value = read_current_value().await.expect("Failed to read current value");
+                // if proof.hash.to_string() != current_value {
+                //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                //     // Decide on your action here. You might want to break the loop or return early.
+                //     break;
+                // }
                 match self
                     .send_and_confirm(&ixs, false, false, Some(proof.hash.to_string()))
                     .await
@@ -145,7 +145,7 @@ impl Miner {
                     Err(_err) => {
                         println!("send_and_confirm Error: {}", _err.to_string());
                         if self.jito_enable || Miner::should_break_loop(&_err.to_string()) {
-                            continue 'mining_loop;
+                            break 'mining_loop;
                         }
                     }
                 }

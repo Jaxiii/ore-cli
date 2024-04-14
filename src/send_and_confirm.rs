@@ -17,14 +17,14 @@ use solana_sdk::{
 };
 use solana_transaction_status::{TransactionConfirmationStatus, UiTransactionEncoding};
 
-use crate::{utils::read_current_value, Miner};
+use crate::{/*utils::read_current_value*/Miner};
 
-const SIMULATION_RETRIES: usize = 4;
-const GATEWAY_RETRIES: usize = 150;
-const CONFIRM_RETRIES: usize = 3;
+const SIMULATION_RETRIES: usize = 1;
+const GATEWAY_RETRIES: usize = 2;
+const CONFIRM_RETRIES: usize = 5;
 
-const CONFIRM_DELAY: u64 = 6000;
-const GATEWAY_DELAY: u64 = 6000;
+const CONFIRM_DELAY: u64 = 10000;
+const GATEWAY_DELAY: u64 = 10000;
 
 impl Miner {
     pub async fn send_and_confirm(
@@ -57,15 +57,15 @@ impl Miner {
         if dynamic_cus {
             let mut sim_attempts = 0;
             'simulate: loop {
-                let current_value = read_current_value().await.expect("Failed to read current value");
-                if hash_proof != Some(current_value.clone()) {
-                    println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                    // Decide on your action here. You might want to break the loop or return early.
-                    return Err(ClientError {
-                        request: None,
-                        kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-                    });
-                }
+                // let current_value = read_current_value().await.expect("Failed to read current value");
+                // if hash_proof != Some(current_value.clone()) {
+                //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                //     // Decide on your action here. You might want to break the loop or return early.
+                //     return Err(ClientError {
+                //         request: None,
+                //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+                //     });
+                // }
                 let sim_res = client
                     .simulate_transaction_with_config(
                         &tx,
@@ -123,26 +123,26 @@ impl Miner {
         tx.sign(&[&signer], hash);
 
         let mut attempts = 0;
-        let mut current_value = read_current_value().await.expect("Failed to read current value");
-        if hash_proof != Some(current_value.clone()) {
-            println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-            // Decide on your action here. You might want to break the loop or return early.
-            return Err(ClientError {
-                request: None,
-                kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-            });
-        }
+        // let mut current_value = read_current_value().await.expect("Failed to read current value");
+        // if hash_proof != Some(current_value.clone()) {
+        //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+        //     // Decide on your action here. You might want to break the loop or return early.
+        //     return Err(ClientError {
+        //         request: None,
+        //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+        //     });
+        // }
         loop {
             if self.jito_enable {
-                current_value = read_current_value().await.expect("Failed to read current value");
-                if hash_proof != Some(current_value.clone()) {
-                    println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                    // Decide on your action here. You might want to break the loop or return early.
-                    return Err(ClientError {
-                        request: None,
-                        kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-                    });
-                }
+                // current_value = read_current_value().await.expect("Failed to read current value");
+                // if hash_proof != Some(current_value.clone()) {
+                //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                //     // Decide on your action here. You might want to break the loop or return early.
+                //     return Err(ClientError {
+                //         request: None,
+                //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+                //     });
+                // }
                 match jito_client.send_transaction_with_config(&tx, send_cfg).await {
                     Err(_err) => {
                         // println!("JITO Error: {:?}", err);
@@ -151,15 +151,15 @@ impl Miner {
                     _ => {}
                 };
             }
-            current_value = read_current_value().await.expect("Failed to read current value");
-            if hash_proof != Some(current_value.clone()) {
-                println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                // Decide on your action here. You might want to break the loop or return early.
-                return Err(ClientError {
-                    request: None,
-                    kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-                });
-            }
+            // current_value = read_current_value().await.expect("Failed to read current value");
+            // if hash_proof != Some(current_value.clone()) {
+            //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+            //     // Decide on your action here. You might want to break the loop or return early.
+            //     return Err(ClientError {
+            //         request: None,
+            //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+            //     });
+            // }
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     println!("{:?}", sig);
@@ -169,29 +169,29 @@ impl Miner {
                     }
                     for _ in 0..CONFIRM_RETRIES {
                         // Read the current value from the file
-                        current_value = read_current_value().await.expect("Failed to read current value");
-                        if hash_proof != Some(current_value.clone()) {
-                            println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                            // Decide on your action here. You might want to break the loop or return early.
-                            return Err(ClientError {
-                                request: None,
-                                kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-                            });
-                        }
+                        // current_value = read_current_value().await.expect("Failed to read current value");
+                        // if hash_proof != Some(current_value.clone()) {
+                        //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                        //     // Decide on your action here. You might want to break the loop or return early.
+                        //     return Err(ClientError {
+                        //         request: None,
+                        //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+                        //     });
+                        // }
                         std::thread::sleep(Duration::from_millis(CONFIRM_DELAY));
                         match client.get_signature_statuses(&[sig]).await {
                             Ok(signature_statuses) => {
                                 println!("Confirmation: {:?}", signature_statuses.value[0]);
                                             // Check if the existing proof data matches the current value
-                                current_value = read_current_value().await.expect("Failed to read current value");
-                                if hash_proof != Some(current_value.clone()) {
-                                    println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
-                                    // Decide on your action here. You might want to break the loop or return early.
-                                    return Err(ClientError {
-                                        request: None,
-                                        kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
-                                    });
-                                }
+                                // current_value = read_current_value().await.expect("Failed to read current value");
+                                // if hash_proof != Some(current_value.clone()) {
+                                //     println!("Proof data does not match the current value. Another instance may have already submitted the transaction.");
+                                //     // Decide on your action here. You might want to break the loop or return early.
+                                //     return Err(ClientError {
+                                //         request: None,
+                                //         kind: ClientErrorKind::Custom("Proof data changed, stopping operation.".into()),
+                                //     });
+                                // }
                                 for signature_status in signature_statuses.value {
                                     if let Some(signature_status) = signature_status.as_ref() {
                                         if signature_status.confirmation_status.is_some() {
@@ -263,7 +263,7 @@ impl Miner {
             tx.sign(&[&signer], hash);
             attempts += 1;
             if attempts > GATEWAY_RETRIES {
-                return Err(ClientError {
+                break Err(ClientError {
                     request: None,
                     kind: ClientErrorKind::Custom("Max retries".into()),
                 });
